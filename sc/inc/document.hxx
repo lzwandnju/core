@@ -40,8 +40,10 @@
 #include <tools/gen.hxx>
 #include <svl/zforlist.hxx>
 
+#include <cassert>
 #include <memory>
 #include <map>
+#include <mutex>
 #include <set>
 #include <vector>
 
@@ -270,6 +272,16 @@ const sal_uInt8 SC_DDE_ENGLISH       = 1;
 const sal_uInt8 SC_DDE_TEXT          = 2;
 const sal_uInt8 SC_DDE_IGNOREMODE    = 255;       /// For usage in FindDdeLink() only!
 
+enum class ScMutationGuardFlags
+{
+    // Bit mask bits
+    CORE                = 0x0001,
+    FORMULA             = 0x0002,
+    RECURSIVE_INTERPRET = 0x0004,
+    // How many bits there are
+    N = 3
+};
+
 class ScDocument
 {
 friend class ScValueIterator;
@@ -296,6 +308,7 @@ friend class sc::ColumnSpanSet;
 friend class sc::EditTextIterator;
 friend class sc::FormulaGroupAreaListener;
 friend class sc::TableColumnBlockPositionSet;
+friend class ScMutationGuard;
 
     typedef std::vector<ScTable*> TableContainer;
 
@@ -492,6 +505,8 @@ private:
 
     bool                mbTrackFormulasPending  : 1;
     bool                mbFinalTrackFormulas    : 1;
+
+    std::recursive_mutex maMutationGuard[static_cast<std::size_t>(ScMutationGuardFlags::N)];
 
 public:
     bool                     IsCellInChangeTrack(const ScAddress &cell,Color *pColCellBorder);
@@ -2387,6 +2402,17 @@ private:
 
     void EndListeningGroups( const std::vector<ScAddress>& rPosArray );
     void SetNeedsListeningGroups( const std::vector<ScAddress>& rPosArray );
+};
+
+class ScMutationGuard
+{
+public:
+    ScMutationGuard(ScDocument* pDocument, ScMutationGuardFlags nFlags);
+    ~ScMutationGuard();
+
+private:
+    ScDocument* const mpDocument;
+    const ScMutationGuardFlags mnFlags;
 };
 
 #endif
