@@ -464,11 +464,11 @@ uno::Sequence< beans::NamedValue > OStorageHelper::CreateGpgPackageEncryptionDat
     std::unique_ptr<GpgME::Context> ctx;
     GpgME::Error err = GpgME::checkEngine(GpgME::OpenPGP);
     if (err)
-        throw RuntimeException("The GpgME library failed to initialize for the OpenPGP protocol.");
+        throw uno::RuntimeException("The GpgME library failed to initialize for the OpenPGP protocol.");
 
     ctx.reset( GpgME::Context::createForProtocol(GpgME::OpenPGP) );
     if (ctx == nullptr)
-        throw RuntimeException("The GpgME library failed to initialize for the OpenPGP protocol.");
+        throw uno::RuntimeException("The GpgME library failed to initialize for the OpenPGP protocol.");
     ctx->setArmor(false);
     ctx->setKeyListMode(GPGME_KEYLIST_MODE_LOCAL);
     std::vector<GpgME::Key> keys;
@@ -476,6 +476,7 @@ uno::Sequence< beans::NamedValue > OStorageHelper::CreateGpgPackageEncryptionDat
         ctx->key(
             "0x909BE2575CEDBEA3", err, true));
 
+#if 0
     // good, ctx is setup now, let's sign the lot
     GpgME::Data data_in(
         reinterpret_cast<char*>(xmlSecBufferGetData(pDsigCtx->transformCtx.result)),
@@ -505,7 +506,7 @@ uno::Sequence< beans::NamedValue > OStorageHelper::CreateGpgPackageEncryptionDat
     aContainer[0].Value = makeAny(aGpgEncryptionData);
     aContainer[1].Name = "EncryptionKey";
     aContainer[1].Value = makeAny(aEncryptionData);
-
+#endif
     (void)aDocName;
 
     return aContainer;
