@@ -74,6 +74,7 @@ SAL_WNODEPRECATED_DECLARATIONS_POP
 void AquaSalTimer::queueDispatchTimerEvent( bool bAtStart )
 {
     Stop();
+    m_bDirectTimeout = true;
     ImplNSAppPostEvent( AquaSalInstance::DispatchTimerEvent,
                         bAtStart, GetNextEventVersion() );
 }
@@ -139,13 +140,14 @@ void AquaSalTimer::callTimerCallback()
 {
     ImplSVData* pSVData = ImplGetSVData();
     SolarMutexGuard aGuard;
+    m_bDirectTimeout = false;
     if( pSVData->maSchedCtx.mpSalTimer )
         pSVData->maSchedCtx.mpSalTimer->CallCallback();
 }
 
 void AquaSalTimer::handleTimerElapsed()
 {
-    if ( GetSalData()->mpInstance->mbIsLiveResize )
+    if ( m_bDirectTimeout || GetSalData()->mpInstance->mbIsLiveResize )
     {
         // Stop the timer, as it is just invalidated after the firing function
         Stop();
@@ -155,10 +157,12 @@ void AquaSalTimer::handleTimerElapsed()
         queueDispatchTimerEvent( YES );
 }
 
-void AquaSalTimer::handleDispatchTimerEvent( NSEvent *pEvent )
+bool AquaSalTimer::handleDispatchTimerEvent( NSEvent *pEvent )
 {
-    if ( IsValidEventVersion( [pEvent data1] ) )
+    bool bIsValidEvent = IsValidEventVersion( [pEvent data1] );
+    if ( bIsValidEvent )
         callTimerCallback();
+    return bIsValidEvent;
 }
 
 void AquaSalTimer::handleStartTimerEvent( NSEvent* pEvent )
@@ -177,8 +181,8 @@ void AquaSalTimer::handleStartTimerEvent( NSEvent* pEvent )
 
 bool AquaSalTimer::IsTimerElapsed() const
 {
-    assert( !(ExistsValidEvent() && m_pRunningTimer) );
-    if ( ExistsValidEvent() )
+    assert( !((ExistsValidEvent() || m_bDirectTimeout) && m_pRunningTimer) );
+    if ( ExistsValidEvent() || m_bDirectTimeout )
         return true;
     if ( !m_pRunningTimer )
         return false;
