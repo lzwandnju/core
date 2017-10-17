@@ -58,7 +58,7 @@ public:
 
     void handleStartTimerEvent( NSEvent* pEvent );
     bool handleDispatchTimerEvent( NSEvent* pEvent );
-    void handleTimerElapsed();
+    bool handleTimerElapsed( bool bHandleAllCurrentEvents );
     void handleWindowShouldClose();
 
     bool IsTimerElapsed() const;

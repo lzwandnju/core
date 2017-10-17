@@ -105,11 +105,8 @@ bool DoYield( bool bWait, bool bAllCurrent )
     if ( !bAllCurrent && bWasEvent )
         return true;
     bWasEvent = ProcessSystemEvents( bAllCurrent, &bWasSchedulerEvent ) || bWasEvent;
-    if ( !bWasSchedulerEvent && IsSchedulerEvent() )
-    {
-        ProcessSchedulerEvent()
-        bWasEvent = true;
-    }
+    if ( (!bWasSchedulerEvent || bAllCurrent) && IsSchedulerEvent() )
+        bWasEvent = ProcessSchedulerEvent( bAllCurrent ) || bWasEvent;
     if ( !bWasEvent && bWait )
     {
         WaitForSystemEvents();

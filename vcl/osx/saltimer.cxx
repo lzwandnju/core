@@ -136,13 +136,11 @@ void AquaSalTimer::Stop()
     InvalidateEvent();
 }
 
-void AquaSalTimer::callTimerCallback()
+bool AquaSalTimer::callTimerCallback( bool bHandleAllCurrentEvents )
 {
-    ImplSVData* pSVData = ImplGetSVData();
     SolarMutexGuard aGuard;
     m_bDirectTimeout = false;
-    if( pSVData->maSchedCtx.mpSalTimer )
-        pSVData->maSchedCtx.mpSalTimer->CallCallback();
+    return SalTimer::CallCallback( bHandleAllCurrentEvents );
 }
 
 void AquaSalTimer::handleTimerElapsed()
@@ -151,7 +149,7 @@ void AquaSalTimer::handleTimerElapsed()
     {
         // Stop the timer, as it is just invalidated after the firing function
         Stop();
-        callTimerCallback();
+        callTimerCallback( false );
     }
     else
         queueDispatchTimerEvent( YES );
@@ -161,7 +159,7 @@ bool AquaSalTimer::handleDispatchTimerEvent( NSEvent *pEvent )
 {
     bool bIsValidEvent = IsValidEventVersion( [pEvent data1] );
     if ( bIsValidEvent )
-        callTimerCallback();
+        callTimerCallback( false );
     return bIsValidEvent;
 }
 

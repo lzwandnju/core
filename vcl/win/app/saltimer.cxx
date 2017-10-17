@@ -147,15 +147,16 @@ void CALLBACK SalTimerProc(PVOID data, BOOLEAN)
     }
 }
 
-void WinSalTimer::ImplHandleElapsedTimer()
+bool WinSalTimer::ImplHandleElapsedTimer( bool bHandleAllCurrentEvents )
 {
     // Test for MouseLeave
     SalTestMouseLeave();
 
     m_bDirectTimeout = false;
     ImplSalYieldMutexAcquireWithWait();
-    CallCallback();
+    bool bRet = Timeout( bHandleAllCurrentEvents );
     ImplSalYieldMutexRelease();
+    return bRet;
 }
 
 bool WinSalTimer::ImplHandleTimerEvent( const WPARAM aWPARAM )

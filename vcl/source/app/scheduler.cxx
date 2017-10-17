@@ -236,7 +236,7 @@ void Scheduler::ImplStartTimer(sal_uInt64 nMS, bool bForce, sal_uInt64 nTime)
         rSchedCtx.mnTimerStart = 0;
         rSchedCtx.mnTimerPeriod = InfiniteTimeoutMs;
         rSchedCtx.mpSalTimer = pSVData->mpDefInst->CreateSalTimer();
-        rSchedCtx.mpSalTimer->SetCallback(Scheduler::CallbackTaskScheduling);
+        rSchedCtx.mpSalTimer->SetCallback( Scheduler::ProcessTaskScheduling );
     }
 
     assert(SAL_MAX_UINT64 - nMS >= nTime);
@@ -254,12 +254,6 @@ void Scheduler::ImplStartTimer(sal_uInt64 nMS, bool bForce, sal_uInt64 nTime)
         rSchedCtx.mnTimerPeriod = nMS;
         rSchedCtx.mpSalTimer->Start( nMS );
     }
-}
-
-void Scheduler::CallbackTaskScheduling()
-{
-    // this function is for the saltimer callback
-    Scheduler::ProcessTaskScheduling();
 }
 
 static bool g_bDeterministicMode = false;
@@ -325,7 +319,8 @@ static inline ImplSchedulerData* DropSchedulerData(
     return pSchedulerDataNext;
 }
 
-bool Scheduler::ProcessTaskScheduling()
+bool Scheduler::ProcessSingleTask( const bool bHandleAllCurrentEvents,
+                                   const sal_uInt64 nTime )
 {
     ImplSVData *pSVData = ImplGetSVData();
     ImplSchedulerContext &rSchedCtx = pSVData->maSchedCtx;
@@ -336,10 +331,10 @@ bool Scheduler::ProcessTaskScheduling()
     if ( !rSchedCtx.mbActive || InfiniteTimeoutMs == rSchedCtx.mnTimerPeriod )
         return false;
 
-    sal_uInt64 nTime = tools::Time::GetSystemTicks();
     if ( nTime < rSchedCtx.mnTimerStart + rSchedCtx.mnTimerPeriod )
     {
-        SAL_WARN( "vcl.schedule", "we're too early - restart the timer!" );
+        SAL_WARN_IF( !bHandleAllCurrentEvents,
+                     "vcl.schedule", "we're too early - restart the timer!" );
         UpdateSystemTimer( rSchedCtx,
                            rSchedCtx.mnTimerStart + rSchedCtx.mnTimerPeriod - nTime,
                            true, nTime );
@@ -482,6 +477,20 @@ next_entry:
     }
 
     return !!pMostUrgent;
+}
+
+bool Scheduler::ProcessTaskScheduling( bool bHandleAllCurrentEvents )
+{
+    sal_uInt64 nTime = tools::Time::GetSystemTicks();
+    bool bWasEvent = false, bAnyEvent = false;
+    do
+    {
+        bWasEvent = ProcessSingleTask( bHandleAllCurrentEvents, nTime );
+        if ( !bAnyEvent && bWasEvent )
+            bAnyEvent = bWasEvent;
+    }
+    while ( bWasEvent && bHandleAllCurrentEvents );
+    return bAnyEvent;
 }
 
 void Task::StartTimer( sal_uInt64 nMS )
